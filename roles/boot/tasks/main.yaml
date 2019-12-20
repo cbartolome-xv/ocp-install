@@ -1,0 +1,68 @@
+- name: Validate Boot template
+  shell: aws cloudformation validate-template --template-body file://"{{ role_path }}/files/boot_template.yaml"
+
+- name: Get OCP cluster name
+  shell: jq -r .infraID {{ installation_dir}}/files/metadata.json
+  register: os_cluster_name
+
+- name: Get VpcId from VPC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ vpc_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text
+  register: vpcid
+
+- name: Get PublicSubnets from VPC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ vpc_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='PublicSubnetIds'].OutputValue" --output text  | sed 's/,.*//'
+  register: public_subnet1
+
+- name: Get MasterSecurityGroupId from SEC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ sec_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='MasterSecurityGroupId'].OutputValue" --output text
+  register: master_security_groupId
+
+- name: Get MasterSecurityGroupId from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='RegisterNlbIpTargetsLambda'].OutputValue" --output text
+  register: register_nlb_ip_targets_lambda
+
+- name: Get ExternalApiTargetGroupArn from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='ExternalApiTargetGroupArn'].OutputValue" --output text
+  register: external_api_target_group_arn
+
+- name: Get InternalApiTargetGroupArn from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='InternalApiTargetGroupArn'].OutputValue" --output text
+  register: internal_api_target_group_arn
+
+- name: Get InternalServiceTargetGroupArn from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='InternalServiceTargetGroupArn'].OutputValue" --output text
+  register: internal_service_target_group_arn
+
+- name: "Check if s3 bucket for cluster infra already exists"
+  shell: aws s3 ls s3://{{ aws_cluster_name }}-infra
+  register: bucket_exist
+  ignore_errors: True
+
+- name: "Create s3 bucket if not exists"
+  shell: aws s3 mb s3://{{ aws_cluster_name }}-infra
+  when: 'bucket_exist.failed == True'
+
+- name: "Upload bootstrap ignition file"
+  shell: aws s3 cp {{ installation_dir }}/files/bootstrap.ign s3://{{ aws_cluster_name }}-infra/bootstrap.ign
+
+
+- name: Create Boot stak
+  cloudformation:
+    stack_name: "{{boot_stack_name }}"
+    state: "present"
+    disable_rollback: true
+    template: "{{ role_path }}/files/boot_template.yaml"
+    template_parameters:
+        InfrastructureName: "{{ os_cluster_name.stdout }}"
+        RhcosAmi: "{{ rhcos_ami }}"
+        AllowedBootstrapSshCidr: "{{ vpc_cidr }}" 
+        PublicSubnet: "{{ public_subnet1.stdout }}"
+        MasterSecurityGroupId: "{{ master_security_groupId.stdout }}" 
+        VpcId: "{{ vpcid.stdout }}"
+        BootstrapIgnitionLocation: "s3://{{ aws_cluster_name }}-infra/bootstrap.ign" 
+        AutoRegisterELB: "yes" 
+        RegisterNlbIpTargetsLambdaArn: "{{ register_nlb_ip_targets_lambda.stdout }}"
+        ExternalApiTargetGroupArn: "{{ external_api_target_group_arn.stdout }}" 
+        InternalApiTargetGroupArn: "{{ internal_api_target_group_arn.stdout }}" 
+        InternalServiceTargetGroupArn: "{{ internal_service_target_group_arn.stdout }}"
+        

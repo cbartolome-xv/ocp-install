@@ -1,0 +1,43 @@
+- debug:
+    msg: Start prerequisities stage
+
+- name: Download openshift-install and create files folder
+  shell: |
+    curl {{ os_install_url }} --output {{ installation_dir }}/openshift-install.tar.gz
+    mkdir -p {{ installation_dir }}/files
+
+- name: Unzip openshift-install
+  shell: |
+    tar -C {{ installation_dir }}  -zxvf {{ installation_dir}}/openshift-install.tar.gz
+    rm {{ installation_dir}}/openshift-install.tar.gz
+
+- name: Start ssh agent and add ssh key
+  shell: |
+    eval "$(ssh-agent -s)"
+    ssh-add {{ ssh_key }}
+
+- name: Store ssh_key as a variable
+  shell: cat {{ ssh_key }}.pub
+  register: ssh_key_value_output
+
+- set_fact:
+    ssh_key_value: "{{ ssh_key_value_output.stdout }}"
+
+- name: Copy install-config to the installation folder
+  template:
+    src: "{{ role_path }}/files/install-config.yaml"
+    dest: "{{ installation_dir}}/files"
+
+- name: Create Kubernetes manifest
+  command:
+    cmd: "{{ installation_dir }}/openshift-install create manifests --dir={{ installation_dir }}/files"
+
+- name: Configure Kubernetes manifest
+  shell: |
+    rm -f {{ installation_dir }}/files/openshift/99_openshift-cluster-api_master-machines-*.yaml
+    rm -f {{ installation_dir }}/files/openshift/99_openshift-cluster-api_worker-machineset-*.yaml
+    cp -fr "{{ role_path }}/files/cluster-scheduler-02-config.yml" {{ installation_dir }}/files/manifests
+
+- name: Generate the ignition config files
+  command:
+      cmd: "{{ installation_dir }}/openshift-install create ignition-configs --dir={{ installation_dir }}/files"

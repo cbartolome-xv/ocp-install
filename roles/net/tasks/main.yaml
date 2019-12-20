@@ -1,0 +1,33 @@
+- name: Validate Net template
+  shell: aws cloudformation validate-template --template-body file://"{{ role_path }}/files/net_template.yaml"
+
+- name: Get OCP cluster name
+  shell: jq -r .infraID {{ installation_dir}}/files/metadata.json
+  register: os_cluster_name
+
+- name: Get VpcId from VPC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ vpc_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text
+  register: vpcid
+
+- name: Get PublicSubnets from VPC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ vpc_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='PublicSubnetIds'].OutputValue" --output text
+  register: public_subnets
+
+- name: Get PrivateSubnets from VPC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ vpc_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnetIds'].OutputValue" --output text
+  register: private_subnets
+
+- name: Create Net stak
+  cloudformation:
+    stack_name: "{{ net_stack_name }}"
+    state: "present"
+    disable_rollback: true
+    template: "{{ role_path }}/files/net_template.yaml"
+    template_parameters:
+        ClusterName: "{{ aws_cluster_name }}"
+        InfrastructureName: "{{ os_cluster_name.stdout }}"
+        HostedZoneId: "{{ aws_hosted_zone_id }}"
+        HostedZoneName: "{{ aws_base_domain }}"
+        PublicSubnets: "{{ public_subnets.stdout }}"
+        PrivateSubnets: "{{ private_subnets.stdout }}"
+        VpcId: "{{ vpcid.stdout }}"

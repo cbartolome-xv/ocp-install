@@ -1,0 +1,44 @@
+all:
+    vars:
+        # Installation environment
+        installation_dir: /Users/cbartolome/Desktop/temp
+        ssh_key: ~/.ssh/id_rsa_os
+
+
+        aws_base_domain: clb-network.com
+        aws_hosted_zone_id: Z2ESYLT52BF0GQ
+        aws_region: eu-west-3
+        aws_cluster_name: clb-ocp-cluster
+        
+        os_install_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-install-mac-4.2.10.tar.gz
+        os_token: '{"auths":{"cloud.openshift.com":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K2NiYXJ0b2xvbWVjcm9zc3ZhbGVjb20xdXdnazhkejh0ZTF5OW9yZmx2anJoOW5vN3I6WVpVQVdCSDdIWFZMOERDMEFYT1pUQTAyM1RLV0dNWkJBTk1SVjRJRUxRV1VKU0NNMVNTMDBXR1lQTjZVMkI0NA==","email":"cbartolome@crossvale.com"},"quay.io":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K2NiYXJ0b2xvbWVjcm9zc3ZhbGVjb20xdXdnazhkejh0ZTF5OW9yZmx2anJoOW5vN3I6WVpVQVdCSDdIWFZMOERDMEFYT1pUQTAyM1RLV0dNWkJBTk1SVjRJRUxRV1VKU0NNMVNTMDBXR1lQTjZVMkI0NA==","email":"cbartolome@crossvale.com"},"registry.connect.redhat.com":{"auth":"NTI5OTYxMjl8dWhjLTFVV0drOGR6OFRlMXk5b3JmbFZKcmg5bm83cjpleUpoYkdjaU9pSlNVelV4TWlKOS5leUp6ZFdJaU9pSXhZVGxqWkRVell6RmhaalUwWVRKaE9UUmlPVFF3TVdZME56TTFOR0V6TWlKOS5WdFB5Smp5VEVrZ0tweWZwcFRTX1VjSmxSbWktTTVxUS1sVFlrUHMxYTR1ZGR3clRvNXVLcGowd083MzFQajhLS3BYeU5sVGdZZm5TX2VFZmN6Y3BFcE5aZWdfVFVBZU05MHFUVVFwckNfdkFaUlg5SEVuWk9zOUpEc196T3hyS3JLa2QxSENTc2VCQjVDUS1sNWFlR0pDemh3ZnloR0wtOXBpTTlFWUV3RG1oaVVZVUdGelk4cnVkb1BOTjRFSVB0OV9DSk1ucG1qODNBZXdpOVFQQ0JvakV4QU5OSWI3ZmNtNUlFeU5zRkNVZUM5bVUxQ0h0WjZaUWVyRHQ3c0k5UWY1b3psTG9KbmR0N1pTUjM3S3FzLVB4cDlDeFZXcG5KQVFWaGRQcDZuQkpBbUNWWkNoQVE1aHE1SmZ6bVJaalUtU0hSVlIxR29waFhER1JJS3dkcHVlMXdpUktlV1gwelZkNWFRMFZuTTRxdGNZOEVvallnREpzTVJMRzdCLVdsbWU3TVNwNE1MXzlUZEdNSFdTem9GVjZMenVWd3BrZDBCSGhoNXFnYk5uZUpjRnNKaG5lS0dxbGJwdzNmSGl4QnUwb2J2SlZ4ZzZuWlBJeWhtQjBwNm5TTi0zYy1tQU5HUW1OcE1kWUVrd0ZnaUJNTUxrT1FzUUo1MElrVEVnR29mTVRKWGw2Ynh2MXFzd3JYaVRlV1JwQ1Itb0c2MFZVVVJzQlhJaFgtc2d4Z0p0UGtqRzRyX1JGR3E4bXcwNE9UZ0NxcFUyMnpJMlM3OU04ekNmd1Y5NkY2ZWZXU2dhRm0yXzFid3p5bkNIUWduVHVLaXBWMnBDYXFwYWh2WW1BZVBaSlpuMnpiWWhoTUs2Z1g2bjN6SGZLYW1SSXZCaExZOHBCMHJfWlYxWQ==","email":"cbartolome@crossvale.com"},"registry.redhat.io":{"auth":"NTI5OTYxMjl8dWhjLTFVV0drOGR6OFRlMXk5b3JmbFZKcmg5bm83cjpleUpoYkdjaU9pSlNVelV4TWlKOS5leUp6ZFdJaU9pSXhZVGxqWkRVell6RmhaalUwWVRKaE9UUmlPVFF3TVdZME56TTFOR0V6TWlKOS5WdFB5Smp5VEVrZ0tweWZwcFRTX1VjSmxSbWktTTVxUS1sVFlrUHMxYTR1ZGR3clRvNXVLcGowd083MzFQajhLS3BYeU5sVGdZZm5TX2VFZmN6Y3BFcE5aZWdfVFVBZU05MHFUVVFwckNfdkFaUlg5SEVuWk9zOUpEc196T3hyS3JLa2QxSENTc2VCQjVDUS1sNWFlR0pDemh3ZnloR0wtOXBpTTlFWUV3RG1oaVVZVUdGelk4cnVkb1BOTjRFSVB0OV9DSk1ucG1qODNBZXdpOVFQQ0JvakV4QU5OSWI3ZmNtNUlFeU5zRkNVZUM5bVUxQ0h0WjZaUWVyRHQ3c0k5UWY1b3psTG9KbmR0N1pTUjM3S3FzLVB4cDlDeFZXcG5KQVFWaGRQcDZuQkpBbUNWWkNoQVE1aHE1SmZ6bVJaalUtU0hSVlIxR29waFhER1JJS3dkcHVlMXdpUktlV1gwelZkNWFRMFZuTTRxdGNZOEVvallnREpzTVJMRzdCLVdsbWU3TVNwNE1MXzlUZEdNSFdTem9GVjZMenVWd3BrZDBCSGhoNXFnYk5uZUpjRnNKaG5lS0dxbGJwdzNmSGl4QnUwb2J2SlZ4ZzZuWlBJeWhtQjBwNm5TTi0zYy1tQU5HUW1OcE1kWUVrd0ZnaUJNTUxrT1FzUUo1MElrVEVnR29mTVRKWGw2Ynh2MXFzd3JYaVRlV1JwQ1Itb0c2MFZVVVJzQlhJaFgtc2d4Z0p0UGtqRzRyX1JGR3E4bXcwNE9UZ0NxcFUyMnpJMlM3OU04ekNmd1Y5NkY2ZWZXU2dhRm0yXzFid3p5bkNIUWduVHVLaXBWMnBDYXFwYWh2WW1BZVBaSlpuMnpiWWhoTUs2Z1g2bjN6SGZLYW1SSXZCaExZOHBCMHJfWlYxWQ==","email":"cbartolome@crossvale.com"}}}'
+       
+        # VPC
+        vpc_stack_name: ocp-vpc
+        vpc_cidr: "10.0.0.0/16" 
+        availability_zonecount: 3 
+        subnet_bits: "12" 
+
+        # NET
+        net_stack_name: ocp-net
+
+        # SEC
+        sec_stack_name: ocp-sec
+
+        # BOOT
+        boot_stack_name: ocp-boot
+        rhcos_ami: "ami-058ad17da14ff4d0d" 
+
+        # CONTROL
+        control_stack_name: ocp-control
+        master_instance_type: "m5.xlarge"
+
+        # WORKER
+        worker_stack_name: ocp-worker
+        worker_instance_type: "m5.xlarge"
+
+        #INSTALL
+        installation_log_level: debug
+
+
+

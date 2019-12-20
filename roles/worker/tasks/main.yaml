@@ -1,0 +1,46 @@
+- name: Validate Worker template
+  shell: aws cloudformation validate-template --template-body file://"{{ role_path }}/files/worker_template.yaml"
+
+- name: Get OCP cluster name
+  shell: jq -r .infraID {{ installation_dir}}/files/metadata.json
+  register: os_cluster_name  
+
+- name: Get WorkerSecurityGroupId from SEC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ sec_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='WorkerSecurityGroupId'].OutputValue" --output text
+  register: worker_security_groupId
+
+- name: Get WorkerInstanceProfile from SEC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ sec_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='WorkerInstanceProfile'].OutputValue" --output text
+  register: worker_instance_profile
+
+
+- name: Get the base64 encoded certificate authority string to use
+  shell: jq -r .ignition.security.tls.certificateAuthorities[0].source  {{ installation_dir}}/files/worker.ign
+  register: certificate_authorities
+
+- name: Get PrivateSubnets from VPC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ vpc_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnetIds'].OutputValue" --output text
+  register: private_subnets
+  
+- name: Create Worker stak
+  cloudformation:
+    stack_name: "{{ worker_stack_name }}-{{ ansible_loop.index }}"
+    state: "present"
+    disable_rollback: true
+    template: "{{ role_path }}/files/worker_template.yaml"
+    template_parameters:
+        InfrastructureName: "{{ os_cluster_name.stdout }}"
+        RhcosAmi: "{{ rhcos_ami }}"
+        Subnet: "{{ item }}" 
+        WorkerSecurityGroupId: "{{ worker_security_groupId.stdout }}" 
+        IgnitionLocation: "https://api-int.{{ aws_cluster_name}}.{{ aws_base_domain }}:22623/config/worker"
+        CertificateAuthorities: "{{ certificate_authorities.stdout }}"
+        WorkerInstanceProfileName: "{{ worker_instance_profile.stdout }}" 
+        WorkerInstanceType: "{{ worker_instance_type }}" 
+  loop: "{{ private_subnets.stdout.split(',') }}"
+  loop_control:
+    extended: yes
+    
+
+        
+        

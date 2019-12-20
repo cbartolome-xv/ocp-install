@@ -1,0 +1,13 @@
+- name: Validate VPC template
+  shell: aws cloudformation validate-template --template-body file://"{{ role_path }}/files/vpc_template.yaml"
+
+- name: Create VPC stak
+  cloudformation:
+    stack_name: "{{ vpc_stack_name }}"
+    state: "present"
+    disable_rollback: true
+    template: "{{ role_path }}/files/vpc_template.yaml"
+    template_parameters:
+        VpcCidr: "{{ vpc_cidr }}" 
+        AvailabilityZoneCount: "{{ availability_zonecount }}"
+        SubnetBits: "{{ subnet_bits }}"

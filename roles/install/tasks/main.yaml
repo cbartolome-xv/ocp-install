@@ -1,0 +1,7 @@
+- name: Create Kubernetes manifest
+  command:
+    cmd: "{{ installation_dir }}/openshift-install wait-for bootstrap-complete --dir={{ installation_dir }}/files --log-level={{ installation_log_level }}"
+  register: log
+
+- debug:
+    msg: "{{ log.stdout_lines }}"

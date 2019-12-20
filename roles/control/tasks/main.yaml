@@ -1,0 +1,73 @@
+- name: Validate Control template
+  shell: aws cloudformation validate-template --template-body file://"{{ role_path }}/files/control_template.yaml"
+
+- name: Get OCP cluster name
+  shell: jq -r .infraID {{ installation_dir}}/files/metadata.json
+  register: os_cluster_name
+
+- name: Get MasterSecurityGroupId from SEC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ sec_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='MasterSecurityGroupId'].OutputValue" --output text
+  register: master_security_groupId
+
+- name: Get PrivateHostedZoneId from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='PrivateHostedZoneId'].OutputValue" --output text
+  register: private_hosted_zoneId
+
+- name: Get MasterSecurityGroupId from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='RegisterNlbIpTargetsLambda'].OutputValue" --output text
+  register: register_nlb_ip_targets_lambda
+
+- name: Get ExternalApiTargetGroupArn from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='ExternalApiTargetGroupArn'].OutputValue" --output text
+  register: external_api_target_group_arn
+
+- name: Get InternalApiTargetGroupArn from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='InternalApiTargetGroupArn'].OutputValue" --output text
+  register: internal_api_target_group_arn
+
+- name: Get InternalServiceTargetGroupArn from NET Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ net_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='InternalServiceTargetGroupArn'].OutputValue" --output text
+  register: internal_service_target_group_arn  
+
+- name: Get PrivateSubnets from VPC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ vpc_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='PrivateSubnetIds'].OutputValue" --output text
+  register: private_subnets
+
+- set_fact: private_subnets_list="{{ private_subnets_list | default([]) + [ item ] }}"
+  with_items: "{{ private_subnets.stdout.split(',') }}"
+
+- name: Get the base64 encoded certificate authority string to use
+  shell: jq -r .ignition.security.tls.certificateAuthorities[0].source  {{ installation_dir}}/files/master.ign
+  register: certificate_authorities
+
+- name: Get MasterInstanceProfile from SEC Stack
+  shell: aws cloudformation describe-stacks --stack-name "{{ sec_stack_name }}" --query "Stacks[0].Outputs[?OutputKey=='MasterInstanceProfile'].OutputValue" --output text
+  register: master_instance_profile 
+  
+- name: Create Control stak
+  cloudformation:
+    stack_name: "{{ control_stack_name }}"
+    state: "present"
+    disable_rollback: true
+    template: "{{ role_path }}/files/control_template.yaml"
+    template_parameters:
+        InfrastructureName: "{{ os_cluster_name.stdout }}"
+        RhcosAmi: "{{ rhcos_ami }}"
+        AutoRegisterDNS: "yes"
+        PrivateHostedZoneId: "{{ private_hosted_zoneId.stdout }}"
+        PrivateHostedZoneName: "{{ aws_cluster_name}}.{{ aws_base_domain }}"
+        Master0Subnet: "{{ private_subnets_list[0] }}" # TODO: less than 3 subnets?
+        Master1Subnet: "{{ private_subnets_list[1] }}"
+        Master2Subnet: "{{ private_subnets_list[2] }}"
+        MasterSecurityGroupId: "{{ master_security_groupId.stdout }}" 
+        IgnitionLocation: "https://api-int.{{ aws_cluster_name}}.{{ aws_base_domain }}:22623/config/master"
+        CertificateAuthorities: "{{ certificate_authorities.stdout }}"
+        MasterInstanceProfileName: "{{ master_instance_profile.stdout }}"
+        MasterInstanceType: "{{ master_instance_type }}"
+        AutoRegisterELB: "yes" 
+        RegisterNlbIpTargetsLambdaArn: "{{ register_nlb_ip_targets_lambda.stdout }}"
+        ExternalApiTargetGroupArn: "{{ external_api_target_group_arn.stdout }}" 
+        InternalApiTargetGroupArn: "{{ internal_api_target_group_arn.stdout }}" 
+        InternalServiceTargetGroupArn: "{{ internal_service_target_group_arn.stdout }}"
+        
+        

@@ -1,0 +1,21 @@
+---
+# This playbook creates.
+- hosts: localhost
+
+  roles:
+    - role: prerequisites
+      tags: prerequisites
+    - role: vpc
+      tags: vpc
+    - role: net
+      tags: net
+    - role: sec
+      tags: sec
+    - role: boot
+      tags: boot
+    - role: control
+      tags: control
+    - role: worker
+      tags: worker
+    - role: install
+      tags: install
